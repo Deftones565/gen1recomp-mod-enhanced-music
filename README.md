@@ -1,4 +1,4 @@
-# Enhanced Music 2.5 — bring your own SoundFont
+# Enhanced Music 2.5.0 — bring your own SoundFont
 
 Enhanced Music reads the active song's note commands from the player's
 imported Pokémon Red, Blue, or Yellow ROM and performs them through a
@@ -8,6 +8,19 @@ MIDI, OGG, WAV, or other music files.
 The mod keeps all synthesized audio in memory. If FluidSynth or the selected
 bank is unavailable, the original ROM chip music remains audible instead of
 leaving the game silent. Cries and sound effects are not replaced.
+
+## Installation
+
+1. Download the Enhanced Music `.zip` from this repository's latest GitHub
+   release.
+2. Open gen1recomp's launcher, select the **MODS** tab, choose
+   **Import mod .zip**, and select the downloaded ZIP.
+3. Install FluidSynth and add a SoundFont using the sections below.
+4. Make sure **Enhanced Music** is enabled, then launch or restart the game.
+
+Import the release ZIP as-is; do not extract it manually. The launcher installs
+the mod into its shared per-user `mods` directory. SoundFont files remain
+user-supplied and are not included in the release.
 
 ## Platform support
 
@@ -43,14 +56,17 @@ gen1recomp/
 ├── lib/                           # optional
 │   ├── libfluidsynth.so.3
 │   └── FluidSynth dependencies
-└── run-gen1recomp.sh              # needed when using the local lib folder
+└── steamdeck-launcher.sh          # optional; see dependency note below
 ```
 
 The `lib` directory is optional. Do not include it when FluidSynth is installed
 normally and the operating system can already find it. It is useful on
 restrictive or immutable systems such as SteamOS, where a user-local library
-is preferable to changing the system partition. The launcher must add that
-directory to the native loader path—for example, `LD_LIBRARY_PATH` on Linux.
+is preferable to changing the system partition. The mod finds the main
+FluidSynth library in an adjacent `lib` directory without a launcher. If that
+library also depends on other locally bundled libraries in `lib`, the native
+loader may need the directory in `LD_LIBRARY_PATH`; the optional launcher does
+that before starting the game.
 
 A mod installed from a release ZIP is extracted to a real directory, so its
 own extracted `soundfonts` folder also satisfies this requirement.
@@ -68,12 +84,14 @@ chmod +x gen1recomp-x86_64.AppImage steamdeck-launcher.sh
 
 The script checks that the AppImage and at least one SoundFont are present. If
 an adjacent `lib` directory exists, it sets `POKEPORT_FLUIDSYNTH_DIR` and
-prepends that directory to `LD_LIBRARY_PATH` before launching. Without `lib`,
-the game uses a normal system-installed FluidSynth. Paths containing spaces
-and command-line arguments are supported.
+prepends that directory to `LD_LIBRARY_PATH` before launching. This lets the
+system resolve FluidSynth's locally bundled dependencies as well as the main
+library. Without `lib`, the game uses a normal system-installed FluidSynth.
+Paths containing spaces and command-line arguments are supported.
 
-In Steam's **Add a Non-Steam Game** dialog, select the launcher script rather
-than the AppImage when using the local `lib` directory.
+In Steam's **Add a Non-Steam Game** dialog, select the launcher script when the
+local FluidSynth build needs dependencies from `lib`. Otherwise, selecting the
+AppImage directly is sufficient.
 
 ## FluidSynth setup
 
@@ -175,12 +193,13 @@ ROM chip music active and reports a useful warning.
 ## SoundFont setup
 
 Download or supply any `.sf2` or `.sf3` bank, place it in a supported
-`soundfonts` folder, and restart the game. The mod discovers every bank
-automatically, adds it to the F10 mod menu, and the default **AUTO** selection
-prefers a user-named bank before the recognized suggested presets. Its menu
-name is the SoundFont filename with only the `.sf2` or `.sf3` extension removed;
-capitalization and punctuation are preserved. The three banks below are
-suggestions, not requirements.
+`soundfonts` folder, and restart the game. The mod discovers every compatible
+bank automatically and adds it to the F10 mod menu. The default **AUTO**
+selection prefers an arbitrary user-named bank before the recognized suggested
+presets. Arbitrary banks use the SoundFont filename as their menu name, with
+only the `.sf2` or `.sf3` extension removed; capitalization and punctuation are
+preserved. Recognized suggested filenames use the preset labels listed below.
+The three downloads are suggestions, not requirements.
 
 The user folder is inside LÖVE's per-user save directory. Its exact parent
 varies by operating system; `love.filesystem.getSaveDirectory()` determines it
@@ -189,8 +208,9 @@ SoundFont environment variables remain available for unusual installations.
 
 Use one of these locations:
 
-- `soundfonts/` beside the AppImage;
-- `~/.local/share/pokemon-love2d/soundfonts/`; or
+- `soundfonts/` beside the executable or AppImage;
+- LÖVE's per-user save directory—for example,
+  `~/.local/share/pokemon-love2d/soundfonts/` on Linux; or
 - a path supplied through the environment variables listed below.
 
 ### Suggested SoundFonts
@@ -202,9 +222,9 @@ Use one of these locations:
 - [FluidR3 GM archive](https://ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.zip)
   — extract `FluidR3_GM.sf2` and place it in `soundfonts/`.
 
-Other compatible SoundFont 2 banks work without renaming. Suggested filenames
-retain their tailored menu presets; every other bank appears under its own
-filename and uses the standard orchestral instrument mapping.
+Other compatible `.sf2` and `.sf3` banks work without renaming. Suggested
+filenames retain their tailored menu presets; every other bank appears under
+its own filename and uses the standard orchestral instrument mapping.
 
 Optional explicit paths:
 
@@ -215,17 +235,19 @@ Optional explicit paths:
 
 Choose a bank from the F10 mod manager. Suggested presets switch immediately:
 
-- **GeneralUser GS** — warm and compact; the default.
+- **GeneralUser GS** — warm and compact; the first suggested fallback for
+  **AUTO**.
 - **MuseScore General** — fuller modern ensemble samples.
-- **FluidR3Mono** — the classic MuseScore 2 / Linux GM bank.
+- **FluidR3** — the classic General MIDI bank; both `FluidR3_GM.sf2` and the
+  older `FluidR3Mono_GM.sf3` filename are recognized.
 - **Rare-inspired** — a playful General MIDI arrangement using banjo,
   clarinet, marimba, fiddle, pizzicato strings, organ, and low brass.
 
 Rare-inspired changes instrument assignments only. It does not use samples
 ripped from Banjo-Kazooie or any other Rare game.
 
-The mod uses the game's existing read-only ROM song decoder and public music,
-volume, and fixed-step hooks. It does not modify any engine source file.
+The mod uses the game's existing read-only ROM song decoder plus its public
+music, volume, and fixed-step hooks. It does not modify any engine source file.
 
 No SoundFont files are distributed by this repository or its release ZIP.
 Review and follow the license supplied by the SoundFont author before use or

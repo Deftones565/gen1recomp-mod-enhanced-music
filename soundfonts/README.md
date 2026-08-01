@@ -10,5 +10,6 @@ Suggested downloads:
 - MuseScore General SF3: https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3
 - FluidR3 GM: https://ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.zip
 
-Restart the game after adding a bank. The F10 mod menu uses the filename as the
-bank name. These suggestions are optional; other SoundFont 2 banks work too.
+Restart the game after adding a bank. Arbitrary banks use their filename as the
+F10 menu name; recognized suggested files use a preset label. These suggestions
+are optional, and other compatible `.sf2` and `.sf3` banks work too.
