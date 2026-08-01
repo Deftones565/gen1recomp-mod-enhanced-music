@@ -195,8 +195,8 @@ Use one of these locations:
 
 ### Suggested SoundFonts
 
-- [GeneralUser GS releases](https://github.com/mrbumpy409/GeneralUser-GS/releases)
-  — download the release archive and place its `.sf2` bank in `soundfonts/`.
+- [Download GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS/raw/refs/heads/main/GeneralUser-GS.sf2)
+  — place the downloaded `GeneralUser-GS.sf2` file in `soundfonts/`.
 - [MuseScore General SF3](https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3)
   — a compact, full General MIDI bank.
 - [FluidR3 GM archive](https://ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.zip)
