@@ -57,6 +57,26 @@ directory to the native loader path—for example, `LD_LIBRARY_PATH` on Linux.
 A mod installed from a release ZIP is extracted to a real directory, so its
 own extracted `soundfonts` folder also satisfies this requirement.
 
+### Optional Steam Deck launcher
+
+An example launcher is included at
+[`examples/steamdeck-launcher.sh`](examples/steamdeck-launcher.sh). Copy it
+beside the AppImage, rename it if desired, and make both files executable:
+
+```bash
+chmod +x gen1recomp-x86_64.AppImage steamdeck-launcher.sh
+./steamdeck-launcher.sh
+```
+
+The script checks that the AppImage and at least one SoundFont are present. If
+an adjacent `lib` directory exists, it sets `POKEPORT_FLUIDSYNTH_DIR` and
+prepends that directory to `LD_LIBRARY_PATH` before launching. Without `lib`,
+the game uses a normal system-installed FluidSynth. Paths containing spaces
+and command-line arguments are supported.
+
+In Steam's **Add a Non-Steam Game** dialog, select the launcher script rather
+than the AppImage when using the local `lib` directory.
+
 ## FluidSynth setup
 
 The real-time backend requires a user-installed FluidSynth shared library. The
