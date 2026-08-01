@@ -9,6 +9,13 @@ function FakeSampler:loadBank(path, style)
   self.synth, self.path, self.style = true, path, style
   return true
 end
+function FakeSampler:listPresets()
+  return {
+    { bank = 0, program = 0, name = "Acoustic Grand Piano" },
+    { bank = 128, program = 0, name = "Standard Drum Kit" },
+  }
+end
+function FakeSampler:setChannelPrograms(programs) self.channelPrograms = programs end
 function FakeSampler:start(_, song)
   self.song = song
   self.starts[#self.starts + 1] = song
@@ -45,6 +52,8 @@ T.eq(run.loader.exports.enhanced_music.backend, "fluidsynth_ffi",
   "runtime exposes the restored FluidSynth backend")
 T.eq(run.loader.exports.enhanced_music.requiresNativeLibrary, true,
   "runtime explicitly exposes its FluidSynth shared-library dependency")
+T.eq(#run.loader.exports.enhanced_music.instrumentChoices, 3,
+  "all active SoundFont presets are exposed to the settings menu")
 
 local function select(song)
   return run.loader.hooks:call("music.select", function(chosen) return chosen end,
@@ -62,10 +71,18 @@ T.eq(run.loader.hooks:call("music.volume", function(v) return v end, 0.7, {}), 0
   "other mods' file-backed music remains audible")
 
 select("Music_WildBattle")
+run.loader.modOptions.enhanced_music = { channel_1 = "preset:0:0" }
 run.loader.events:emit("mod.options_changed",
   { mod = "enhanced_music", key = "soundfont", value = "rare" })
 T.eq(sampler.style, "rare", "menu selection swaps the live bank")
 T.eq(sampler.song, "Music_WildBattle", "current ROM song restarts on the new bank")
+
+run.loader.events:emit("mod.options_changed",
+  { mod = "enhanced_music", key = "channel_1", value = "preset:0:0" })
+T.eq(sampler.channelPrograms[1].name, "Acoustic Grand Piano",
+  "channel setting selects a preset from the active SoundFont")
+T.eq(sampler.song, "Music_WildBattle",
+  "changing a channel instrument restarts the current song")
 
 local game = { save = { options = { musicVol = 4 } } }
 run.loader.hooks:call("input.step", function() end, game, 1 / 60)

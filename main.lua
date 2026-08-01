@@ -175,6 +175,7 @@ end
 return function(mod)
   local discovered = discoverSoundfonts(mod)
   local customBanks, customOrder, choices = {}, {}, { { "AUTO", "auto" } }
+  local instrumentChoices = { { "AUTO", "auto" } }
   local knownNames = {}
   for _, spec in pairs(STYLES) do
     for _, filename in ipairs(spec.files) do knownNames[filename:lower()] = true end
@@ -199,6 +200,18 @@ return function(mod)
       default = "auto",
       help = "AUTO detects .sf2/.sf3 files dropped into the soundfonts folder.",
     },
+    { key = "channel_1", type = "choice", label = "CHANNEL 1",
+      choices = instrumentChoices, default = "auto",
+      help = "Instrument for Game Boy pulse channel 1." },
+    { key = "channel_2", type = "choice", label = "CHANNEL 2",
+      choices = instrumentChoices, default = "auto",
+      help = "Instrument for Game Boy pulse channel 2." },
+    { key = "channel_3", type = "choice", label = "CHANNEL 3",
+      choices = instrumentChoices, default = "auto",
+      help = "Instrument for the Game Boy wave channel." },
+    { key = "channel_4", type = "choice", label = "DRUMS",
+      choices = instrumentChoices, default = "auto",
+      help = "Instrument or drum kit for the Game Boy noise channel." },
   })
 
   local previous = rawget(_G, "ENHANCED_MUSIC_RUNTIME")
@@ -229,6 +242,53 @@ return function(mod)
   local decoder
   local decoderOk, decoderValue = pcall(require, "src.core.ChipSynth")
   if decoderOk then decoder = decoderValue end
+
+  local presetByKey = {}
+
+  local function presetLabel(preset)
+    local name = tostring(preset.name or "INSTRUMENT"):upper()
+      :gsub("[^A-Z0-9 ]", " "):gsub("%s+", " ")
+      :match("^%s*(.-)%s*$")
+    local prefix = ("%d:%03d "):format(preset.bank, preset.program)
+    local room = math.max(1, 16 - #prefix)
+    if #name > room then name = name:sub(1, room) end
+    return prefix .. name
+  end
+
+  local function refreshInstrumentChoices()
+    presetByKey = {}
+    for index = #instrumentChoices, 1, -1 do instrumentChoices[index] = nil end
+    instrumentChoices[1] = { "AUTO", "auto" }
+    if type(sampler.listPresets) ~= "function" then return end
+    local ok, presets = pcall(sampler.listPresets, sampler)
+    if not ok then
+      mod.log:warn("Could not read SoundFont instruments: %s", tostring(presets))
+      return
+    end
+    if type(sampler.setPresetCatalog) == "function" then
+      sampler:setPresetCatalog(presets)
+    end
+    for _, preset in ipairs(presets or {}) do
+      local key = ("preset:%d:%d"):format(preset.bank, preset.program)
+      if not presetByKey[key] then
+        presetByKey[key] = preset
+        instrumentChoices[#instrumentChoices + 1] = { presetLabel(preset), key }
+      end
+    end
+    mod.log:info("Found %d instruments in the active SoundFont",
+      #instrumentChoices - 1)
+  end
+
+  local function applyInstrumentOptions()
+    local programs = {}
+    for hardware = 1, 4 do
+      local key = mod.options:get("channel_" .. hardware) or "auto"
+      programs[hardware] = presetByKey[key]
+    end
+    if type(sampler.setChannelPrograms) == "function" then
+      sampler:setChannelPrograms(programs)
+    end
+  end
 
   local function resolveSelection(selection)
     local custom = customBanks[selection]
@@ -265,6 +325,8 @@ return function(mod)
       return false
     end
     selected = selection
+    refreshInstrumentChoices()
+    applyInstrumentOptions()
     mod.log:info("Live SoundFont set to %s (%s)", label, path)
     if restartSong and data and decoder then
       local started, startErr = sampler:start(data, restartSong, decoder)
@@ -330,19 +392,32 @@ return function(mod)
   end)
 
   mod.events:on("mod.options_changed", function(payload)
-    if not (payload and payload.mod == mod.id and payload.key == "soundfont") then
+    if not (payload and payload.mod == mod.id) then return end
+    if payload.key == "soundfont" then
+      local style = payload.value
+      if (style ~= "auto" and not STYLES[style] and not customBanks[style])
+          or style == selected then return end
+      local song = sampler.song
+      configure(style, song)
       return
     end
-    local style = payload.value
-    if (style ~= "auto" and not STYLES[style] and not customBanks[style])
-        or style == selected then return end
+    local hardware = tonumber(tostring(payload.key):match("^channel_([1-4])$"))
+    if not hardware then return end
     local song = sampler.song
-    configure(style, song)
+    applyInstrumentOptions()
+    if song and data and decoder then
+      local started, startErr = sampler:start(data, song, decoder)
+      capturing = started == true
+      if not started then
+        mod.log:warn("Live song restart failed: %s", tostring(startErr))
+      end
+    end
   end)
 
   mod.exports.styles = STYLES
   mod.exports.soundfonts = discovered
   mod.exports.soundfontDisplayName = displayName
+  mod.exports.instrumentChoices = instrumentChoices
   mod.exports.runtime = true
   mod.exports.backend = "fluidsynth_ffi"
   mod.exports.requiresNativeLibrary = true

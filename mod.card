@@ -8,6 +8,8 @@ return {
     },
     added = {
       "automatic selection of user-supplied SF2 and SF3 banks",
+      "semantic AUTO mapping for custom non-General-MIDI SoundFonts",
+      "per-channel instrument selection from every preset in the active bank",
     },
     known = {
       "requires libfluidsynth and a supported local SoundFont bank",

@@ -23,6 +23,54 @@ local PALETTES = {
   },
 }
 
+-- Non-GM banks do not promise that MIDI program 73 is a flute or that drums
+-- live at bank 128. Match their own preset names to the musical role each
+-- Game Boy channel serves for a song category. Earlier terms are preferred.
+local AUTO_KEYWORDS = {
+  town = {
+    { "flute", "clarinet", "cornet", "trumpet", "vibraphone", "bell" },
+    { "guitar clean", "guitar", "electric piano", "harpsichord", "organ", "strings" },
+    { "sub bass", "bass pop", "bass", "tuba", "cello" },
+  },
+  travel = {
+    { "oboe", "flute", "cornet", "trumpet", "vibraphone", "harmonica" },
+    { "strings section", "strings", "fiddle", "guitar clean", "guitar" },
+    { "bass rock", "bass pop", "bass", "tuba", "cello" },
+  },
+  battle = {
+    { "french horn", "brass", "trombone", "trumpet", "cornet" },
+    { "strings staccato", "strings", "guitar dirty", "dirty synth", "pizzicato" },
+    { "bass rock", "bass hit", "sub bass", "bass", "tuba" },
+  },
+  dark = {
+    { "male choir", "choir", "metallic pad", "siren synth", "bell" },
+    { "church organ", "organ", "strings", "metallic pad" },
+    { "sub bass", "bass hit", "bass", "tuba", "cello" },
+  },
+  gentle = {
+    { "vibraphone clean", "vibraphone", "music box", "glockenspiel", "bell", "xylophone" },
+    { "flute", "electric piano", "guitar clean", "harpsichord", "strings" },
+    { "bass pop", "bass", "tuba", "cello" },
+  },
+}
+
+local DRUM_KEYWORDS = {
+  "drum kit close", "drum kit", "drums", "percussion", "bongos", "toms",
+  "snare", "cymbal", "tambourine", "rimshot", "shaker", "woodblock",
+}
+
+local function normalizedName(value)
+  return tostring(value or ""):lower():gsub("[^a-z0-9]+", " ")
+    :match("^%s*(.-)%s*$")
+end
+
+local function matchesAny(name, keywords)
+  for _, keyword in ipairs(keywords) do
+    if name:find(keyword, 1, true) then return true end
+  end
+  return false
+end
+
 local function category(name)
   if name:find("Battle") or name:find("Defeated") or name:find("Gym")
       or name:find("Evil") or name:find("Final") then return "battle" end
@@ -191,13 +239,23 @@ local function loadFluid()
   pcall(ffi.cdef, [[
     typedef struct _fluid_settings_t fluid_settings_t;
     typedef struct _fluid_synth_t fluid_synth_t;
+    typedef struct _fluid_sfont_t fluid_sfont_t;
+    typedef struct _fluid_preset_t fluid_preset_t;
     fluid_settings_t *new_fluid_settings(void);
     void delete_fluid_settings(fluid_settings_t *settings);
     int fluid_settings_setnum(fluid_settings_t *, const char *, double);
     int fluid_settings_setint(fluid_settings_t *, const char *, int);
+    int fluid_settings_setstr(fluid_settings_t *, const char *, const char *);
     fluid_synth_t *new_fluid_synth(fluid_settings_t *settings);
     void delete_fluid_synth(fluid_synth_t *synth);
     int fluid_synth_sfload(fluid_synth_t *, const char *, int);
+    int fluid_synth_sfunload(fluid_synth_t *, int, int);
+    fluid_sfont_t *fluid_synth_get_sfont_by_id(fluid_synth_t *, int);
+    void fluid_sfont_iteration_start(fluid_sfont_t *);
+    fluid_preset_t *fluid_sfont_iteration_next(fluid_sfont_t *);
+    const char *fluid_preset_get_name(fluid_preset_t *);
+    int fluid_preset_get_banknum(fluid_preset_t *);
+    int fluid_preset_get_num(fluid_preset_t *);
     int fluid_synth_program_select(fluid_synth_t *, int, int, int, int);
     int fluid_synth_noteon(fluid_synth_t *, int, int, int);
     int fluid_synth_noteoff(fluid_synth_t *, int, int);
@@ -235,8 +293,120 @@ function FluidSampler.new(log)
     source = nil, synth = nil, settings = nil, sfid = nil,
     engine = nil, states = {}, pool = {}, poolIndex = 1,
     data = nil, song = nil, style = nil, path = nil, volume = 0.8,
+    channelPrograms = {}, presets = {}, presetLookup = {}, generalMidi = false,
   }, FluidSampler)
   return self
+end
+
+function FluidSampler:setPresetCatalog(presets)
+  self.presets, self.presetLookup = {}, {}
+  local gmPrograms, hasGmDrums = {}, false
+  for _, source in ipairs(presets or {}) do
+    local preset = {
+      bank = tonumber(source.bank) or 0,
+      program = tonumber(source.program) or 0,
+      name = tostring(source.name or "INSTRUMENT"),
+    }
+    preset.normalized = normalizedName(preset.name)
+    preset.key = preset.bank .. ":" .. preset.program
+    self.presets[#self.presets + 1] = preset
+    self.presetLookup[preset.key] = preset
+    if preset.bank == 0 then gmPrograms[preset.program] = true end
+    if preset.bank == 128 and preset.program == 0 then hasGmDrums = true end
+  end
+  -- A GM bank supplies the standard percussion bank and broad melodic
+  -- coverage. This avoids treating a custom bank with coincidental program
+  -- numbers (such as GoldenEye 007) as General MIDI.
+  local coverage = 0
+  for _, program in ipairs({ 0, 19, 24, 32, 43, 48, 60, 68, 73 }) do
+    if gmPrograms[program] then coverage = coverage + 1 end
+  end
+  self.generalMidi = hasGmDrums and coverage >= 7
+end
+
+function FluidSampler:bestPreset(keywords, hardware, used)
+  local best, bestScore
+  for index, preset in ipairs(self.presets or {}) do
+    local percussion = matchesAny(preset.normalized, DRUM_KEYWORDS)
+    if (hardware == 4 and percussion) or (hardware ~= 4 and not percussion) then
+      local score = -index / 10000
+      for rank, keyword in ipairs(keywords or {}) do
+        if preset.normalized:find(keyword, 1, true) then
+          score = score + (#keywords - rank + 1) * 100
+          if preset.normalized == keyword then score = score + 50 end
+          break
+        end
+      end
+      if used and used[preset.key] then score = score - 25 end
+      if bestScore == nil or score > bestScore then
+        best, bestScore = preset, score
+      end
+    end
+  end
+  return best
+end
+
+function FluidSampler:autoPrograms(song)
+  local songCategory = category(song)
+  local palette = PALETTES[self.style == "rare" and "rare" or "orchestral"]
+  local gmPrograms = palette[songCategory]
+  if self.generalMidi or #(self.presets or {}) == 0 then
+    return {
+      [1] = self.presetLookup["0:" .. gmPrograms[1]]
+        or { bank = 0, program = gmPrograms[1] },
+      [2] = self.presetLookup["0:" .. gmPrograms[2]]
+        or { bank = 0, program = gmPrograms[2] },
+      [3] = self.presetLookup["0:" .. gmPrograms[3]]
+        or { bank = 0, program = gmPrograms[3] },
+      [4] = self.presetLookup["128:0"] or { bank = 128, program = 0 },
+    }
+  end
+  local result, used = {}, {}
+  local roles = AUTO_KEYWORDS[songCategory] or AUTO_KEYWORDS.town
+  for hardware = 1, 3 do
+    result[hardware] = self:bestPreset(roles[hardware], hardware, used)
+    if result[hardware] then used[result[hardware].key] = true end
+  end
+  result[4] = self:bestPreset(DRUM_KEYWORDS, 4, used)
+  return result
+end
+
+function FluidSampler:listPresets()
+  if not (self.synth and self.sfid and self.ffi) then return {} end
+  local sfont = self.lib.fluid_synth_get_sfont_by_id(self.synth, self.sfid)
+  if sfont == nil then return {} end
+  local presets = {}
+  self.lib.fluid_sfont_iteration_start(sfont)
+  for _ = 1, 16384 do
+    local preset = self.lib.fluid_sfont_iteration_next(sfont)
+    if preset == nil then break end
+    local namePointer = self.lib.fluid_preset_get_name(preset)
+    presets[#presets + 1] = {
+      bank = tonumber(self.lib.fluid_preset_get_banknum(preset)) or 0,
+      program = tonumber(self.lib.fluid_preset_get_num(preset)) or 0,
+      name = namePointer ~= nil and self.ffi.string(namePointer) or "INSTRUMENT",
+    }
+  end
+  table.sort(presets, function(a, b)
+    if a.bank ~= b.bank then return a.bank < b.bank end
+    if a.program ~= b.program then return a.program < b.program end
+    return a.name:lower() < b.name:lower()
+  end)
+  return presets
+end
+
+function FluidSampler:setChannelPrograms(programs)
+  self.channelPrograms = {}
+  for hardware = 1, 4 do
+    local preset = programs and programs[hardware]
+    if type(preset) == "table" then
+      local bank, program = tonumber(preset.bank), tonumber(preset.program)
+      if bank and program then
+        self.channelPrograms[hardware] = { bank = bank, program = program }
+      end
+    end
+  end
+  if self.synth and self.song then self:programSong(self.song) end
 end
 
 function FluidSampler:isAvailable()
@@ -259,8 +429,20 @@ end
 function FluidSampler:loadBank(path, style)
   if not self:isAvailable() then return false, self.error or "audio unavailable" end
   local lib = self.lib
+  if self.synth then
+    local newSfid = lib.fluid_synth_sfload(self.synth, path, 0)
+    if newSfid < 0 then return false, "FluidSynth could not load " .. tostring(path) end
+    local oldSfid = self.sfid
+    self:stop()
+    if oldSfid then lib.fluid_synth_sfunload(self.synth, oldSfid, 0) end
+    self.sfid, self.path, self.style = newSfid, path, style
+    return true
+  end
   local settings = lib.new_fluid_settings()
   if settings == nil then return false, "could not create FluidSynth settings" end
+  -- This backend pulls samples with fluid_synth_write_s16; it never asks
+  -- FluidSynth to open ALSA, SDL, PulseAudio, or another output device.
+  lib.fluid_settings_setstr(settings, "audio.driver", "file")
   lib.fluid_settings_setnum(settings, "synth.sample-rate", RATE)
   lib.fluid_settings_setnum(settings, "synth.gain", 0.65)
   lib.fluid_settings_setint(settings, "synth.polyphony", 64)
@@ -271,18 +453,12 @@ function FluidSampler:loadBank(path, style)
     lib.delete_fluid_settings(settings)
     return false, "could not create FluidSynth"
   end
-  local sfid = lib.fluid_synth_sfload(synth, path, 1)
+  local sfid = lib.fluid_synth_sfload(synth, path, 0)
   if sfid < 0 then
     lib.delete_fluid_synth(synth)
     lib.delete_fluid_settings(settings)
     return false, "FluidSynth could not load " .. tostring(path)
   end
-  -- Only retire the playing bank after its replacement loaded completely.
-  -- A missing/corrupt menu choice therefore leaves the current music alive.
-  local oldSynth, oldSettings = self.synth, self.settings
-  self:stop()
-  if oldSynth then lib.delete_fluid_synth(oldSynth) end
-  if oldSettings then lib.delete_fluid_settings(oldSettings) end
   self.settings, self.synth, self.sfid = settings, synth, sfid
   self.path, self.style = path, style
   return true
@@ -310,13 +486,21 @@ function FluidSampler:setVolume(value)
 end
 
 function FluidSampler:programSong(song)
-  local palette = PALETTES[self.style == "rare" and "rare" or "orchestral"]
-  local programs = palette[category(song)]
-  for channel = 0, 2 do
-    self.lib.fluid_synth_program_select(self.synth, channel,
-      self.sfid, 0, programs[channel + 1])
+  local automatic = self:autoPrograms(song)
+  for hardware = 1, 3 do
+    local channel = hardware - 1
+    local selected = self.channelPrograms[hardware] or automatic[hardware]
+    if selected then
+      self.lib.fluid_synth_program_select(self.synth, channel, self.sfid,
+        selected.bank, selected.program)
+    end
     self.lib.fluid_synth_pitch_wheel_sens(self.synth, channel, 2)
     self.lib.fluid_synth_cc(self.synth, channel, 10, channel == 0 and 48 or 80)
+  end
+  local drums = self.channelPrograms[4] or automatic[4]
+  if drums then
+    self.lib.fluid_synth_program_select(self.synth, 9, self.sfid,
+      drums.bank, drums.program)
   end
   self.lib.fluid_synth_pitch_wheel_sens(self.synth, 9, 2)
 end

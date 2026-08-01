@@ -2,3 +2,4 @@
 tests/enhanced_music_test.lua
 tests/fluid_loader_test.lua
 tests/soundfont_discovery_test.lua
+tests/instrument_presets_test.lua

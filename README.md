@@ -1,4 +1,4 @@
-# Enhanced Music 2.5.0 — bring your own SoundFont
+# Enhanced Music 2.6.0 — bring your own SoundFont
 
 Enhanced Music reads the active song's note commands from the player's
 imported Pokémon Red, Blue, or Yellow ROM and performs them through a
@@ -220,6 +220,29 @@ Choose a bank from the F10 mod manager. Suggested presets switch immediately:
 
 Rare-inspired changes instrument assignments only. It does not use samples
 ripped from Banjo-Kazooie or any other Rare game.
+
+### Per-channel instruments
+
+After loading a SoundFont, the mod reads every preset exposed by that bank and
+adds four selectors to its F10 settings:
+
+- **CHANNEL 1** — Game Boy pulse channel 1;
+- **CHANNEL 2** — Game Boy pulse channel 2;
+- **CHANNEL 3** — Game Boy wave channel; and
+- **DRUMS** — Game Boy noise channel.
+
+Each choice shows the SoundFont bank number, program number, and a shortened
+preset name. **AUTO** detects standard General MIDI banks and keeps their exact
+song-aware orchestral or Rare-inspired program mapping. For a custom non-GM
+bank, it matches that bank's own preset names to each song's melody, harmony,
+bass, and percussion roles. This allows game-specific banks such as GoldenEye
+007 to use their real flute, guitar, bass, brass, strings, and bank-0 drum kits
+instead of unrelated GM program numbers.
+
+Selecting a preset manually overrides **AUTO** for that channel and restarts
+the current song immediately. Choices are saved with the other mod settings.
+When switching SoundFonts, a saved bank/program is reused if the new bank
+provides it; otherwise that channel falls back to **AUTO**.
 
 The mod uses the game's existing read-only ROM song decoder plus its public
 music, volume, and fixed-step hooks. It does not modify any engine source file.
