@@ -1,7 +1,7 @@
 {
   "id": "enhanced_music",
   "name": "Enhanced Music",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",

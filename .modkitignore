@@ -1,2 +1,4 @@
 # modkit matches exact relative paths (not glob patterns).
 tests/enhanced_music_test.lua
+tests/fluid_loader_test.lua
+tests/soundfont_discovery_test.lua

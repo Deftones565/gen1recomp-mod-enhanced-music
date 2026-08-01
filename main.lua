@@ -88,6 +88,46 @@ local function findSoundfont(mod, style)
   return nil
 end
 
+local function displayName(filename)
+  return filename:gsub("%.[Ss][Ff][23]$", "")
+end
+
+local function discoverSoundfonts(mod)
+  local testing = rawget(_G, "ENHANCED_MUSIC_TEST_DISCOVERED")
+  if testing then return testing end
+  local found, paths = {}, {}
+  if not (love and love.filesystem and love.filesystem.getDirectoryItems
+      and love.filesystem.getRealDirectory) then return found end
+
+  local function scan(logicalRoot)
+    local ok, items = pcall(love.filesystem.getDirectoryItems, logicalRoot)
+    if not ok or type(items) ~= "table" then return end
+    table.sort(items, function(a, b) return a:lower() < b:lower() end)
+    for _, filename in ipairs(items) do
+      if filename:lower():match("%.sf[23]$") then
+        local logical = logicalRoot .. "/" .. filename
+        local real = love.filesystem.getRealDirectory(logical)
+        local path = real and (real:gsub("[/\\]+$", "") .. "/" .. logical)
+        -- A bank inside a packed .g1mod has no native filesystem path for
+        -- FluidSynth. Adjacent copies are found separately by findSoundfont.
+        if path and exists(path) and not paths[path] then
+          paths[path] = true
+          found[#found + 1] = {
+            key = "file:" .. filename:lower(), filename = filename,
+            label = displayName(filename), path = path,
+          }
+        end
+      end
+    end
+  end
+
+  -- `soundfonts` is LÖVE's per-user save folder. The mod path also supports
+  -- developers and players who install the mod as an unpacked directory.
+  scan("soundfonts")
+  scan(mod.path .. "/soundfonts")
+  return found
+end
+
 local function loadSamplerClass(mod)
   local testing = rawget(_G, "ENHANCED_MUSIC_TEST_SAMPLER")
   if testing then return testing end
@@ -101,17 +141,31 @@ local function loadSamplerClass(mod)
 end
 
 return function(mod)
+  local discovered = discoverSoundfonts(mod)
+  local customBanks, customOrder, choices = {}, {}, { { "AUTO", "auto" } }
+  local knownNames = {}
+  for _, spec in pairs(STYLES) do
+    for _, filename in ipairs(spec.files) do knownNames[filename:lower()] = true end
+  end
+  for _, style in ipairs({ "generaluser", "musescore", "fluidr3", "rare" }) do
+    if findSoundfont(mod, style) then
+      choices[#choices + 1] = { STYLES[style].label, style }
+    end
+  end
+  for _, bank in ipairs(discovered) do
+    if not knownNames[bank.filename:lower()] and not customBanks[bank.key] then
+      customBanks[bank.key] = bank
+      customOrder[#customOrder + 1] = bank.key
+      choices[#choices + 1] = { bank.label, bank.key }
+    end
+  end
+
   mod.options:define({
     {
       key = "soundfont", type = "choice", label = "SOUNDFONT",
-      choices = {
-        { "GENERALUSER", "generaluser" },
-        { "MUSESCORE", "musescore" },
-        { "FLUID R3", "fluidr3" },
-        { "RARE-INSPIRED", "rare" },
-      },
-      default = "generaluser",
-      help = "Live sampled instruments. Changes immediately without rendering files.",
+      choices = choices,
+      default = "auto",
+      help = "AUTO detects .sf2/.sf3 files dropped into the soundfonts folder.",
     },
   })
 
@@ -133,27 +187,52 @@ return function(mod)
   if rawget(_G, "state") == nil then _G.state = {} end
 
   local data, game, capturing = nil, nil, false
-  local selected = mod.options:get("soundfont") or "generaluser"
-  if not STYLES[selected] then selected = "generaluser" end
+  local selected = mod.options:get("soundfont") or "auto"
+  if selected ~= "auto" and not STYLES[selected] and not customBanks[selected] then
+    selected = "auto"
+  elseif STYLES[selected] and not findSoundfont(mod, selected) then
+    selected = "auto"
+  end
 
   local decoder
   local decoderOk, decoderValue = pcall(require, "src.core.ChipSynth")
   if decoderOk then decoder = decoderValue end
 
-  local function configure(style, restartSong)
-    local path = findSoundfont(mod, style)
+  local function resolveSelection(selection)
+    local custom = customBanks[selection]
+    if custom then return custom.path, "orchestral", custom.label end
+    if selection == "auto" then
+      -- A bank deliberately dropped by the user wins over bundled presets.
+      local first = customOrder[1]
+      if first then
+        custom = customBanks[first]
+        return custom.path, "orchestral", custom.label
+      end
+      for _, fallback in ipairs({ "generaluser", "musescore", "fluidr3" }) do
+        local path = findSoundfont(mod, fallback)
+        if path then return path, fallback, STYLES[fallback].label end
+      end
+      return nil, "orchestral", "AUTO"
+    end
+    local spec = STYLES[selection]
+    if not spec then return nil, "orchestral", tostring(selection) end
+    return findSoundfont(mod, selection), selection, spec.label
+  end
+
+  local function configure(selection, restartSong)
+    local path, style, label = resolveSelection(selection)
     if not path then
-      mod.log:warn("%s SoundFont not found. Put %s in the soundfonts folder.",
-        STYLES[style].label, STYLES[style].files[1])
+      mod.log:warn("%s SoundFont not found. Drop an .sf2 or .sf3 file into the soundfonts folder.",
+        label)
       return false
     end
     local ok, err = sampler:loadBank(path, style)
     if not ok then
-      mod.log:warn("Could not activate %s: %s", STYLES[style].label, tostring(err))
+      mod.log:warn("Could not activate %s: %s", label, tostring(err))
       return false
     end
-    selected = style
-    mod.log:info("Live SoundFont set to %s (%s)", STYLES[style].label, path)
+    selected = selection
+    mod.log:info("Live SoundFont set to %s (%s)", label, path)
     if restartSong and data and decoder then
       local started, startErr = sampler:start(data, restartSong, decoder)
       capturing = started == true
@@ -222,12 +301,15 @@ return function(mod)
       return
     end
     local style = payload.value
-    if not STYLES[style] or style == selected then return end
+    if (style ~= "auto" and not STYLES[style] and not customBanks[style])
+        or style == selected then return end
     local song = sampler.song
     configure(style, song)
   end)
 
   mod.exports.styles = STYLES
+  mod.exports.soundfonts = discovered
+  mod.exports.soundfontDisplayName = displayName
   mod.exports.runtime = true
   mod.exports.backend = "fluidsynth_ffi"
   mod.exports.requiresNativeLibrary = true

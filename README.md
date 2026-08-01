@@ -1,4 +1,4 @@
-# Enhanced Music 2.3 — cross-platform FluidSynth discovery
+# Enhanced Music 2.4 — automatic SoundFont discovery
 
 Enhanced Music reads the active song's note commands from the player's
 imported Pokémon Red, Blue, or Yellow ROM and performs them through a
@@ -72,6 +72,18 @@ or writes the library. A missing or incompatible library leaves the original
 ROM chip music active and reports a useful warning.
 
 ## SoundFont setup
+
+Drop any `.sf2` or `.sf3` bank into the game's user `soundfonts` folder and
+restart the game. The mod discovers it automatically, adds it to the F10 mod
+menu, and the default **AUTO** selection prefers it over the included named
+presets. Its menu name is the SoundFont filename with only the `.sf2` or `.sf3`
+extension removed; capitalization and punctuation are preserved. An unpacked
+mod's own `soundfonts` folder is scanned as well.
+
+The user folder is inside LÖVE's per-user save directory. Its exact parent
+varies by operating system; `love.filesystem.getSaveDirectory()` determines it
+at runtime, so the mod contains no machine-specific path. Existing explicit
+SoundFont environment variables remain available for unusual installations.
 
 The prepared Steam Deck bundle places the supported SoundFonts in a
 `soundfonts` folder beside the AppImage. For a separate installation, use one
