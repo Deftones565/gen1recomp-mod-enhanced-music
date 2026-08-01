@@ -235,9 +235,8 @@ Each choice shows the SoundFont bank number, program number, and a shortened
 preset name. **AUTO** detects standard General MIDI banks and keeps their exact
 song-aware orchestral or Rare-inspired program mapping. For a custom non-GM
 bank, it matches that bank's own preset names to each song's melody, harmony,
-bass, and percussion roles. This allows game-specific banks such as GoldenEye
-007 to use their real flute, guitar, bass, brass, strings, and bank-0 drum kits
-instead of unrelated GM program numbers.
+bass, and percussion roles. This lets custom banks use their own named
+instruments and drum kits instead of unrelated GM program numbers.
 
 Selecting a preset manually overrides **AUTO** for that channel and restarts
 the current song immediately. Choices are saved with the other mod settings.
