@@ -26,6 +26,37 @@ installed FluidSynth cannot provide dependable Android support. FluidSynth
 would need to be included in the Android APK, which this mod deliberately does
 not do. Rooted or specially configured devices are outside the supported setup.
 
+## Required packaged layout
+
+A fused executable or AppImage must have a physical `soundfonts` directory
+containing at least one `.sf2` or `.sf3` bank. FluidSynth cannot read a bank
+that exists only inside the fused executable. The directory name is exactly
+`soundfonts`; alternatives such as `sf` are not searched.
+
+Use this layout for the prepared Linux and Steam Deck package:
+
+```text
+gen1recomp/
+├── gen1recomp-x86_64.AppImage
+├── soundfonts/                    # required
+│   ├── GeneralUser-GS.sf2
+│   ├── MuseScore_General.sf3
+│   └── FluidR3Mono_GM.sf3
+├── lib/                           # optional
+│   ├── libfluidsynth.so.3
+│   └── FluidSynth dependencies
+└── run-gen1recomp.sh              # needed when using the local lib folder
+```
+
+The `lib` directory is optional. Do not include it when FluidSynth is installed
+normally and the operating system can already find it. It is useful on
+restrictive or immutable systems such as SteamOS, where a user-local library
+is preferable to changing the system partition. The launcher must add that
+directory to the native loader path—for example, `LD_LIBRARY_PATH` on Linux.
+
+A mod installed from a release ZIP is extracted to a real directory, so its
+own extracted `soundfonts` folder also satisfies this requirement.
+
 ## FluidSynth setup
 
 The real-time backend requires a user-installed FluidSynth shared library. The
