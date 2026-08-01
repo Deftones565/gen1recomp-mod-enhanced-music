@@ -1,4 +1,4 @@
-# Enhanced Music 2.6.0 — bring your own SoundFont
+# Enhanced Music 2.6.1 — bring your own SoundFont
 
 Enhanced Music reads the active song's note commands from the player's
 imported Pokémon Red, Blue, or Yellow ROM and performs them through a
@@ -27,7 +27,7 @@ user-supplied and are not included in the release.
 | Platform | Status | FluidSynth discovery |
 | --- | --- | --- |
 | Linux | Supported | System loader, application `lib`, standard library directories, or an override |
-| SteamOS | Supported | Application `lib` or a system/user installation |
+| SteamOS | Supported | Application `lib`, launcher environment, or a system/user installation |
 | Windows 64-bit | Supported | Windows loader/`PATH`, application `lib`, common package prefixes, or an override |
 | macOS Intel | Supported | System loader, application `lib`, Homebrew/MacPorts, or an override |
 | macOS Apple Silicon | Supported | System loader, application `lib`, Homebrew/MacPorts, or an override |
@@ -56,17 +56,48 @@ gen1recomp/
 ├── lib/                           # optional
 │   ├── libfluidsynth.so.3
 │   └── FluidSynth dependencies
+└── launcher.sh                    # recommended on Steam Deck
 ```
 
 The `lib` directory is optional. Do not include it when FluidSynth is installed
 normally and the operating system can already find it. It is useful on
 restrictive or immutable systems such as SteamOS, where a user-local library
 is preferable to changing the system partition. The mod finds the main
-FluidSynth shared library in an adjacent `lib` directory automatically. No
-launcher script or command-line argument is required.
+FluidSynth shared library in an adjacent `lib` directory automatically. The
+Steam Deck launcher also adds `lib` to `LD_LIBRARY_PATH`, allowing SteamOS to
+resolve dependencies stored beside the main FluidSynth library.
 
 A mod installed from a release ZIP is extracted to a real directory, so its
 own extracted `soundfonts` folder also satisfies this requirement.
+
+## Steam Deck launcher
+
+This repository includes [`launcher.sh`](launcher.sh). Put a copy beside
+`gen1recomp-x86_64.AppImage`, the physical `soundfonts` folder, and the optional
+`lib` folder shown above. In Desktop Mode, open Konsole in that folder and run:
+
+```bash
+chmod +x launcher.sh gen1recomp-x86_64.AppImage
+./launcher.sh
+```
+
+The script locates its own directory, supports paths containing spaces, checks
+that the AppImage and at least one SoundFont exist, and uses a system-installed
+FluidSynth when there is no adjacent `lib` folder.
+
+To launch from Gaming Mode:
+
+1. In Desktop Mode, open Steam and choose **Games → Add a Non-Steam Game**.
+2. Choose **Browse**, show all files, and select `launcher.sh`.
+3. Open the shortcut's **Properties**.
+4. Set **Target** to the full quoted path to `launcher.sh`.
+5. Set **Start In** to the full quoted path of its containing folder.
+6. Leave **Launch Options** empty and do not force Proton; this is a native
+   Linux AppImage.
+7. Return to Gaming Mode and start the shortcut normally.
+
+Use `launcher.sh`, rather than the AppImage, as Steam's shortcut target when
+using a local `lib` directory.
 
 ## FluidSynth setup
 
@@ -106,7 +137,7 @@ sudo zypper install fluidsynth
 SteamOS uses an Arch base, but its system partition is managed differently and
 system changes may not survive an OS update. A user-local Steam Deck setup can
 instead place the SteamOS-compatible library and its dependencies in `lib`
-beside the AppImage. The mod discovers the shared library there automatically.
+beside the AppImage and launch through `launcher.sh`.
 
 ### Windows
 
