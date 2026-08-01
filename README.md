@@ -37,10 +37,62 @@ locations:
 - Linux: `libfluidsynth.so.3` or `libfluidsynth.so`;
 - macOS: `libfluidsynth.3.dylib` or `libfluidsynth.dylib`.
 
-On Windows, install the 64-bit library and add its `bin` directory to `PATH`.
-The library architecture must match the 64-bit game.
-Linux package-manager installations normally need no extra configuration.
-Homebrew and MacPorts locations are recognized on macOS.
+Use FluidSynth's official [Get FluidSynth](https://www.fluidsynth.org/wiki/Download/)
+page for current downloads and platform instructions. Prefer a released
+package from the operating system's package manager.
+
+### Linux
+
+Install FluidSynth system-wide with the package manager. It places the shared
+library in that distribution's normal library directory, which the mod checks
+automatically:
+
+```bash
+# Ubuntu or Debian
+sudo apt-get install fluidsynth
+
+# Arch Linux
+sudo pacman -S fluidsynth
+
+# Fedora
+sudo dnf install fluidsynth
+
+# openSUSE
+sudo zypper install fluidsynth
+```
+
+SteamOS uses an Arch base, but its system partition is managed differently and
+system changes may not survive an OS update. A user-local Steam Deck setup can
+instead place the SteamOS-compatible library and its dependencies in `lib`
+beside the AppImage, then launch with that directory in `LD_LIBRARY_PATH`.
+
+### Windows
+
+Install the 64-bit build so it matches the 64-bit game. The official page lists
+Chocolatey:
+
+```powershell
+choco install fluidsynth
+```
+
+Restart the launcher after installation so it receives the updated `PATH`.
+The folder containing `libfluidsynth-3.dll` must be in `PATH`, or the DLL may
+be placed in the application's `lib` folder. For a custom location, set
+`POKEPORT_FLUIDSYNTH_LIBRARY` to the complete DLL path.
+
+### macOS
+
+The official page lists Homebrew, MacPorts, and Fink. Install with one of:
+
+```bash
+brew install fluidsynth
+sudo port install fluidsynth
+fink install fluidsynth
+```
+
+Homebrew's Intel and Apple Silicon prefixes and the standard MacPorts location
+are detected automatically. A custom installation can use the full-path
+override described below.
 
 Application layouts with a `lib` folder are also recognized automatically.
 The mod checks `lib` beside the application/source directory, beside an
