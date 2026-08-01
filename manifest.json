@@ -1,0 +1,17 @@
+{
+  "id": "enhanced_music",
+  "name": "Enhanced Music",
+  "version": "2.3.0",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "AUDIO",
+  "game_version": ">=0.0.0-0 <2.0.0",
+  "priority": 110,
+  "permissions": ["filesystem", "engine_internals"],
+  "dependencies": [],
+  "optional_dependencies": [],
+  "conflicts": [],
+  "affects_link": false,
+  "description": "Streams ROM song commands through selectable SoundFonts in memory, with no generated music files."
+}
