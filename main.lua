@@ -66,9 +66,6 @@ local function soundfontRoots(mod)
   if appDir then addRoot(roots, seen, appDir .. "/soundfonts") end
   addRoot(roots, seen, "/usr/share/soundfonts")
   addRoot(roots, seen, "/usr/share/sounds/sf2")
-  -- Developer convenience only; packaged users use an adjacent or save-dir
-  -- soundfonts folder. No path here is ever written by the mod.
-  addRoot(roots, seen, "/tmp")
   return roots
 end
 
