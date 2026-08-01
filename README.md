@@ -27,7 +27,7 @@ user-supplied and are not included in the release.
 | Platform | Status | FluidSynth discovery |
 | --- | --- | --- |
 | Linux | Supported | System loader, application `lib`, standard library directories, or an override |
-| SteamOS | Supported | Application `lib`, launcher environment, or a system/user installation |
+| SteamOS | Supported | Application `lib` or a system/user installation |
 | Windows 64-bit | Supported | Windows loader/`PATH`, application `lib`, common package prefixes, or an override |
 | macOS Intel | Supported | System loader, application `lib`, Homebrew/MacPorts, or an override |
 | macOS Apple Silicon | Supported | System loader, application `lib`, Homebrew/MacPorts, or an override |
@@ -56,42 +56,17 @@ gen1recomp/
 ├── lib/                           # optional
 │   ├── libfluidsynth.so.3
 │   └── FluidSynth dependencies
-└── steamdeck-launcher.sh          # optional; see dependency note below
 ```
 
 The `lib` directory is optional. Do not include it when FluidSynth is installed
 normally and the operating system can already find it. It is useful on
 restrictive or immutable systems such as SteamOS, where a user-local library
 is preferable to changing the system partition. The mod finds the main
-FluidSynth library in an adjacent `lib` directory without a launcher. If that
-library also depends on other locally bundled libraries in `lib`, the native
-loader may need the directory in `LD_LIBRARY_PATH`; the optional launcher does
-that before starting the game.
+FluidSynth shared library in an adjacent `lib` directory automatically. No
+launcher script or command-line argument is required.
 
 A mod installed from a release ZIP is extracted to a real directory, so its
 own extracted `soundfonts` folder also satisfies this requirement.
-
-### Optional Steam Deck launcher
-
-An example launcher is included at
-[`examples/steamdeck-launcher.sh`](examples/steamdeck-launcher.sh). Copy it
-beside the AppImage, rename it if desired, and make both files executable:
-
-```bash
-chmod +x gen1recomp-x86_64.AppImage steamdeck-launcher.sh
-./steamdeck-launcher.sh
-```
-
-The script checks that the AppImage and at least one SoundFont are present. If
-an adjacent `lib` directory exists, it sets `POKEPORT_FLUIDSYNTH_DIR` and
-prepends that directory to `LD_LIBRARY_PATH` before launching. This lets the
-system resolve FluidSynth's locally bundled dependencies as well as the main
-library. Without `lib`, the game uses a normal system-installed FluidSynth.
-Paths containing spaces and command-line arguments are supported.
-
-In Steam's **Add a Non-Steam Game** dialog, select the launcher script when the
-local FluidSynth build needs dependencies from `lib`. Otherwise, selecting the
-AppImage directly is sufficient.
 
 ## FluidSynth setup
 
@@ -131,7 +106,7 @@ sudo zypper install fluidsynth
 SteamOS uses an Arch base, but its system partition is managed differently and
 system changes may not survive an OS update. A user-local Steam Deck setup can
 instead place the SteamOS-compatible library and its dependencies in `lib`
-beside the AppImage, then launch with that directory in `LD_LIBRARY_PATH`.
+beside the AppImage. The mod discovers the shared library there automatically.
 
 ### Windows
 
