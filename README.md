@@ -1,4 +1,4 @@
-# Enhanced Music 2.4 — automatic SoundFont discovery
+# Enhanced Music 2.5 — bring your own SoundFont
 
 Enhanced Music reads the active song's note commands from the player's
 imported Pokémon Red, Blue, or Yellow ROM and performs them through a
@@ -39,9 +39,7 @@ Use this layout for the prepared Linux and Steam Deck package:
 gen1recomp/
 ├── gen1recomp-x86_64.AppImage
 ├── soundfonts/                    # required
-│   ├── GeneralUser-GS.sf2
-│   ├── MuseScore_General.sf3
-│   └── FluidR3Mono_GM.sf3
+│   └── Your-SoundFont.sf2         # any .sf2 or .sf3 bank
 ├── lib/                           # optional
 │   ├── libfluidsynth.so.3
 │   └── FluidSynth dependencies
@@ -176,31 +174,37 @@ ROM chip music active and reports a useful warning.
 
 ## SoundFont setup
 
-Drop any `.sf2` or `.sf3` bank into the game's user `soundfonts` folder and
-restart the game. The mod discovers it automatically, adds it to the F10 mod
-menu, and the default **AUTO** selection prefers it over the included named
-presets. Its menu name is the SoundFont filename with only the `.sf2` or `.sf3`
-extension removed; capitalization and punctuation are preserved. An unpacked
-mod's own `soundfonts` folder is scanned as well.
+Download or supply any `.sf2` or `.sf3` bank, place it in a supported
+`soundfonts` folder, and restart the game. The mod discovers every bank
+automatically, adds it to the F10 mod menu, and the default **AUTO** selection
+prefers a user-named bank before the recognized suggested presets. Its menu
+name is the SoundFont filename with only the `.sf2` or `.sf3` extension removed;
+capitalization and punctuation are preserved. The three banks below are
+suggestions, not requirements.
 
 The user folder is inside LÖVE's per-user save directory. Its exact parent
 varies by operating system; `love.filesystem.getSaveDirectory()` determines it
 at runtime, so the mod contains no machine-specific path. Existing explicit
 SoundFont environment variables remain available for unusual installations.
 
-The prepared Steam Deck bundle places the supported SoundFonts in a
-`soundfonts` folder beside the AppImage. For a separate installation, use one
-of these locations:
+Use one of these locations:
 
 - `soundfonts/` beside the AppImage;
 - `~/.local/share/pokemon-love2d/soundfonts/`; or
 - a path supplied through the environment variables listed below.
 
-Recognized files:
+### Suggested SoundFonts
 
-- `GeneralUser-GS.sf2`
-- `MuseScore_General.sf3` (an SF2 file with the same base name also works)
-- `FluidR3Mono_GM.sf3` (or `FluidR3_GM.sf2`)
+- [GeneralUser GS releases](https://github.com/mrbumpy409/GeneralUser-GS/releases)
+  — download the release archive and place its `.sf2` bank in `soundfonts/`.
+- [MuseScore General SF3](https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General.sf3)
+  — a compact, full General MIDI bank.
+- [FluidR3 GM archive](https://ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.zip)
+  — extract `FluidR3_GM.sf2` and place it in `soundfonts/`.
+
+Other compatible SoundFont 2 banks work without renaming. Suggested filenames
+retain their tailored menu presets; every other bank appears under its own
+filename and uses the standard orchestral instrument mapping.
 
 Optional explicit paths:
 
@@ -209,7 +213,7 @@ Optional explicit paths:
 - `POKEPORT_SOUNDFONT_FLUIDR3`
 - `POKEPORT_SOUNDFONT_RARE`
 
-Choose a bank from the F10 mod manager. The active song switches immediately:
+Choose a bank from the F10 mod manager. Suggested presets switch immediately:
 
 - **GeneralUser GS** — warm and compact; the default.
 - **MuseScore General** — fuller modern ensemble samples.
@@ -223,8 +227,6 @@ ripped from Banjo-Kazooie or any other Rare game.
 The mod uses the game's existing read-only ROM song decoder and public music,
 volume, and fixed-step hooks. It does not modify any engine source file.
 
-SoundFont sources and license notices are included with distributed banks:
-
-- GeneralUser GS: https://github.com/mrbumpy409/GeneralUser-GS
-- MuseScore General: https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/
-- FluidR3Mono: https://musescore.org/en/node/248741
+No SoundFont files are distributed by this repository or its release ZIP.
+Review and follow the license supplied by the SoundFont author before use or
+redistribution.

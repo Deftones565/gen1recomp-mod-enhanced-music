@@ -7,7 +7,7 @@ return {
       "ROM music commands are performed through sampled instruments in real time",
     },
     added = {
-      "four selectable live instrument sets across Red, Blue, and Yellow",
+      "automatic selection of user-supplied SF2 and SF3 banks",
     },
     known = {
       "requires libfluidsynth and a supported local SoundFont bank",

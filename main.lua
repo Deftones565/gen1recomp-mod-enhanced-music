@@ -105,8 +105,8 @@ local function discoverSoundfonts(mod)
         local logical = logicalRoot .. "/" .. filename
         local real = love.filesystem.getRealDirectory(logical)
         local path = real and (real:gsub("[/\\]+$", "") .. "/" .. logical)
-        -- A bank inside a packed .g1mod has no native filesystem path for
-        -- FluidSynth. Adjacent copies are found separately by findSoundfont.
+        -- A bank still inside an archive has no native filesystem path for
+        -- FluidSynth. The normal ZIP installer extracts mods before loading.
         if path and exists(path) and not paths[path] then
           paths[path] = true
           found[#found + 1] = {
@@ -122,6 +122,37 @@ local function discoverSoundfonts(mod)
   -- developers and players who install the mod as an unpacked directory.
   scan("soundfonts")
   scan(mod.path .. "/soundfonts")
+
+  -- A fused executable does not mount the directory beside itself into
+  -- LÖVE's virtual filesystem. Borrow the engine's read-only PhysFS helper to
+  -- enumerate each real search root, then give FluidSynth the physical path.
+  -- This keeps arbitrary filenames working beside AppImages and Windows apps
+  -- without shell commands or platform-specific directory APIs.
+  local cacheOk, CacheFs = pcall(require, "src.import.CacheFs")
+  if cacheOk and CacheFs and CacheFs.withMounted then
+    local mountPoint = "__enhanced_music_soundfonts"
+    for _, root in ipairs(soundfontRoots(mod)) do
+      local ok, items = pcall(CacheFs.withMounted, root, mountPoint, function()
+        return love.filesystem.getDirectoryItems(mountPoint)
+      end)
+      if ok and type(items) == "table" then
+        table.sort(items, function(a, b) return a:lower() < b:lower() end)
+        for _, filename in ipairs(items) do
+          if filename:lower():match("%.sf[23]$") then
+            local path = root .. "/" .. filename
+            if exists(path) and not paths[path] then
+              paths[path] = true
+              found[#found + 1] = {
+                key = "file:" .. filename:lower(), filename = filename,
+                label = displayName(filename), path = path,
+              }
+            end
+          end
+        end
+      end
+    end
+  end
+  table.sort(found, function(a, b) return a.label:lower() < b.label:lower() end)
   return found
 end
 
@@ -199,7 +230,8 @@ return function(mod)
     local custom = customBanks[selection]
     if custom then return custom.path, "orchestral", custom.label end
     if selection == "auto" then
-      -- A bank deliberately dropped by the user wins over bundled presets.
+      -- AUTO accepts any detected SF2/SF3 bank; suggested filenames are not
+      -- required and receive no privileged loading behavior here.
       local first = customOrder[1]
       if first then
         custom = customBanks[first]
