@@ -45,6 +45,10 @@ local function soundfontRoots(mod)
     if love.filesystem.getSaveDirectory then
       addRoot(roots, seen, love.filesystem.getSaveDirectory() .. "/soundfonts")
     end
+    if love.filesystem.getSourceBaseDirectory then
+      local ok, base = pcall(love.filesystem.getSourceBaseDirectory)
+      if ok then addRoot(roots, seen, base .. "/soundfonts") end
+    end
     if love.filesystem.getWorkingDirectory then
       local cwd = love.filesystem.getWorkingDirectory()
       addRoot(roots, seen, cwd .. "/soundfonts")
