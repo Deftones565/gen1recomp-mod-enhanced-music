@@ -1,0 +1,23 @@
+return {
+  summary = "The original Gen 1 score performed with softer sampled instruments.",
+  author = "Gen1 Recomp community",
+  tags = { "audio", "music", "soundfont", "accessibility" },
+  differences = {
+    changed = {
+      "ROM music commands are performed through sampled instruments in real time",
+    },
+    added = {
+      "four selectable live instrument sets across Red, Blue, and Yellow",
+    },
+    known = {
+      "requires libfluidsynth and a supported local SoundFont bank",
+    },
+  },
+  credits = {
+    { who = "S. Christian Collins", for_ = "GeneralUser GS SoundFont" },
+    { who = "MuseScore contributors", for_ = "MuseScore General SoundFont" },
+    { who = "Frank Wen and Michael Cowgill", for_ = "FluidR3Mono SoundFont" },
+    { who = "FluidSynth", for_ = "SoundFont rendering" },
+  },
+  compat = { engine = ">=0.1.45 <2.0.0", modApi = 2 },
+}
