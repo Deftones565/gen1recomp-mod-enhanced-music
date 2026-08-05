@@ -13,5 +13,6 @@
   "optional_dependencies": [],
   "conflicts": [],
   "affects_link": false,
-  "description": "Streams ROM song commands through selectable SoundFonts in memory, with no generated music files."
+  "description": "Streams ROM song commands through selectable SoundFonts in memory, with no generated music files.",
+  "github": "Deftones565/gen1recomp-mod-enhanced-music"
 }
